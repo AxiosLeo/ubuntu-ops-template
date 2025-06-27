@@ -13,7 +13,7 @@ volumes:
 services:
   mysql:
     image: 'docker.m.daocloud.io/mysql:8.0'
-    container_name: "leadgis-mysql"
+    container_name: "infra-mysql"
     hostname: mysql
     command: >
       mysqld 
@@ -51,7 +51,7 @@ services:
 
   redis:
     image: 'docker.m.daocloud.io/redis:8.0-alpine'
-    container_name: "leadgis-redis"
+    container_name: "infra-redis"
     hostname: redis
     restart: unless-stopped
     command: >
@@ -86,7 +86,7 @@ services:
 
   mongo:
     image: "docker.m.daocloud.io/mongo:8.0"
-    container_name: "leadgis-mongo"
+    container_name: "infra-mongo"
     hostname: mongo
     environment:
       MONGO_INITDB_DATABASE: "${MONGO_DB}"
@@ -115,7 +115,7 @@ services:
 
   minio:
     image: quay.m.daocloud.io/minio/minio:RELEASE.2025-05-24T17-08-30Z
-    container_name: "leadgis-minio"
+    container_name: "infra-minio"
     hostname: minio
     command: server /data --console-address ":9001"
     environment:
@@ -147,7 +147,7 @@ services:
 
   rabbitmq:
     image: docker.m.daocloud.io/rabbitmq:management-alpine
-    container_name: leadgis-rabbitmq
+    container_name: infra-rabbitmq
     hostname: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
@@ -178,7 +178,7 @@ services:
 
   postgres:
     image: docker.m.daocloud.io/postgis/postgis:13-3.5  #postgres:13.4
-    container_name: "leadgis-postgres"
+    container_name: "infra-postgres"
     restart: 'on-failure:3'
     environment:
       TZ: Asia/Shanghai

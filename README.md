@@ -1,5 +1,36 @@
 # Ops Template for Ubuntu
 
+## 🚀 Quick Start
+
+Clone and initialize the workspace with essential tools in one command:
+
+```bash
+# Clone to system root and initialize workspace
+cd / && git clone https://github.com/AxiosLeo/ubuntu-ops-template.git workspace && cd /workspace && make init-workspace
+```
+
+**What `init-workspace` does:**
+- ✅ Sets up proper file permissions
+- ✅ Updates system packages
+- ✅ Installs Git with configuration
+- ✅ Prepares development environment
+
+**Next Steps:**
+```bash
+# Install specific software
+make install-docker    # Docker & Docker Compose
+make install-nginx     # Nginx web server
+make install-nodejs    # Node.js via NVM
+make install-python    # Python via Miniconda
+
+# Or install everything at once
+make install-all
+
+# Setup complete environments
+make setup-dev         # Development environment
+make setup-web         # Web server environment
+```
+
 ## 📦 Installation
 
 ### Method 1: Quick Setup with Makefile (Recommended)
