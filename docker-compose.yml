@@ -1,0 +1,195 @@
+# Docker Compose 配置文件
+
+# 数据卷配置
+volumes:
+  mysql-data:
+  redis-data:
+  mongo-data:
+  minio-data:
+  rabbitmq-data:
+  postgres-data:
+  postgres-log:
+
+services:
+  mysql:
+    image: 'docker.m.daocloud.io/mysql:8.0'
+    container_name: "leadgis-mysql"
+    hostname: mysql
+    command: >
+      mysqld 
+      --default-authentication-plugin=caching_sha2_password 
+      --character-set-server=utf8mb4 
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max_connections=1000
+      --bind-address=0.0.0.0
+      --skip-host-cache
+      --skip-name-resolve
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASS}
+      MYSQL_DATABASE: 'main_db'
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "33306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASS}"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  redis:
+    image: 'docker.m.daocloud.io/redis:8.0-alpine'
+    container_name: "leadgis-redis"
+    hostname: redis
+    restart: unless-stopped
+    command: >
+      redis-server 
+      --requirepass "${REDIS_PASS}"
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_USERNAME: ${REDIS_USER:-eagle_user}
+      REDIS_PASS: ${REDIS_PASS}
+      TZ: Asia/Shanghai
+    volumes:
+      - redis-data:/data
+    ports:
+      - "36379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  mongo:
+    image: "docker.m.daocloud.io/mongo:8.0"
+    container_name: "leadgis-mongo"
+    hostname: mongo
+    environment:
+      MONGO_INITDB_DATABASE: "${MONGO_DB}"
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "37017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  minio:
+    image: quay.m.daocloud.io/minio/minio:RELEASE.2025-05-24T17-08-30Z
+    container_name: "leadgis-minio"
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      MINIO_BROWSER: "on"
+      MINIO_DOMAIN: localhost
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    volumes:
+      - minio-data:/data
+    ports:
+      - "39000:9000"
+      - "39001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  rabbitmq:
+    image: docker.m.daocloud.io/rabbitmq:management-alpine
+    container_name: leadgis-rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_DEFAULT_VHOST: "/"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error},{default,info}] disk_free_limit 2147483648"
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  postgres:
+    image: docker.m.daocloud.io/postgis/postgis:13-3.5  #postgres:13.4
+    container_name: "leadgis-postgres"
+    restart: 'on-failure:3'
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASS}
+      #POSTGRES_DB: default
+    ports:
+      - "35432:5432"
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+      - "postgres-log:/var/log/postgresql"
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
