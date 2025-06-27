@@ -1,10 +1,13 @@
 # Ubuntu Ops Template Makefile
 # This Makefile provides convenient commands for installing and managing software
 
-.PHONY: help install-all install-git install-docker install-nginx install-nodejs install-python update clean check-deps
+.PHONY: help install-all install-git install-docker install-nginx install-nodejs install-python update clean check-deps clone-workspace init-workspace
 
 # Default target
 .DEFAULT_GOAL := help
+
+# Project repository URL
+REPO_URL := https://github.com/axiosleo/ubuntu-ops-template.git
 
 # Colors for output
 RED=\033[0;31m
@@ -151,6 +154,28 @@ backup-config: ## Backup important system configuration files
 	@if [ -f ~/.gitconfig ]; then cp ~/.gitconfig backup/gitconfig.backup; fi
 	@if [ -f ~/.bashrc ]; then cp ~/.bashrc backup/bashrc.backup; fi
 	@printf "\033[0;32mConfiguration backup completed in ./backup/\033[0m\n"
+
+# Clone project to workspace (if not already there)
+clone-workspace: ## Clone project to /workspace directory
+	@if [ ! -d "/workspace" ]; then \
+		printf "\033[0;36mCloning repository to /workspace...\033[0m\n"; \
+		sudo git clone $(REPO_URL) /workspace; \
+		sudo chown -R $$USER:$$USER /workspace; \
+		printf "\033[0;32mRepository cloned to /workspace\033[0m\n"; \
+	else \
+		printf "\033[1;33m/workspace directory already exists\033[0m\n"; \
+	fi
+	@chmod +x /workspace/scripts/*.sh
+
+# Initialize workspace with basic setup
+init-workspace: clone-workspace ## Initialize workspace and install essentials
+	@printf "\033[0;36mInitializing workspace...\033[0m\n"
+	@cd /workspace && make update
+	@cd /workspace && make install-git
+	@printf "\033[0;32mWorkspace initialization completed!\033[0m\n"
+	@printf "\033[0;34mNext steps:\033[0m\n"
+	@printf "  cd /workspace\n"
+	@printf "  make help\n"
 
 # Test installations
 test: ## Test if installed software is working correctly

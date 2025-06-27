@@ -1,6 +1,59 @@
 # Ops Template for Ubuntu
 
+## 📦 Installation
+
+### Method 1: Quick Setup with Makefile (Recommended)
+
+If you already have git and make installed, you can use this one-command setup:
+
+```bash
+# Clone and initialize workspace in one command
+# (Run this from any directory)
+curl -sSL https://raw.githubusercontent.com/axiosleo/ubuntu-ops-template/main/Makefile | sudo make -f - init-workspace
+
+# Or if you have the repo locally
+make init-workspace
+```
+
+### Method 2: Manual Clone to System Root
+
+Clone this repository to your system root directory and name it `workspace`:
+
+```bash
+# Clone to system root directory
+sudo git clone https://github.com/axiosleo/ubuntu-ops-template.git /workspace
+
+# Change ownership to current user
+sudo chown -R $USER:$USER /workspace
+
+# Navigate to workspace
+cd /workspace
+
+# Make scripts executable
+chmod +x scripts/*.sh
+
+# Or use Makefile
+make make-executable
+```
+
+### Method 3: Clone to User Directory
+
+If you prefer to clone to your user directory:
+
+```bash
+# Clone to user home directory
+git clone https://github.com/axiosleo/ubuntu-ops-template.git ~/workspace
+
+# Navigate to workspace
+cd ~/workspace
+
+# Make scripts executable
+chmod +x scripts/*.sh
+```
+
 ## 🚀 Quick Start
+
+> **📍 Important**: Make sure you are in the `/workspace` directory before running any commands below.
 
 ### Using Makefile (Recommended)
 
@@ -49,24 +102,26 @@ make backup-config # Backup configurations
 
 ## 📋 Available Commands
 
-| Command               | Description                            |
-| --------------------- | -------------------------------------- |
-| `make help`           | Show all available commands            |
-| `make status`         | Show installation status               |
-| `make install-all`    | Install all available software         |
-| `make install-git`    | Install and configure Git              |
-| `make install-docker` | Install Docker CE and Docker Compose   |
-| `make install-nginx`  | Install and configure Nginx            |
-| `make install-nodejs` | Install Node.js using NVM              |
-| `make install-python` | Install Python using Miniconda         |
-| `make setup-dev`      | Setup complete development environment |
-| `make setup-web`      | Setup web server environment           |
-| `make setup-basic`    | Setup basic server essentials          |
-| `make update`         | Update system packages                 |
-| `make test`           | Test if installed software works       |
-| `make clean`          | Clean up temporary files and caches    |
-| `make backup-config`  | Backup important configuration files   |
-| `make interactive`    | Run interactive installation menu      |
+| Command                | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| `make help`            | Show all available commands                 |
+| `make status`          | Show installation status                    |
+| `make install-all`     | Install all available software              |
+| `make install-git`     | Install and configure Git                   |
+| `make install-docker`  | Install Docker CE and Docker Compose        |
+| `make install-nginx`   | Install and configure Nginx                 |
+| `make install-nodejs`  | Install Node.js using NVM                   |
+| `make install-python`  | Install Python using Miniconda              |
+| `make setup-dev`       | Setup complete development environment      |
+| `make setup-web`       | Setup web server environment                |
+| `make setup-basic`     | Setup basic server essentials               |
+| `make update`          | Update system packages                      |
+| `make test`            | Test if installed software works            |
+| `make clean`           | Clean up temporary files and caches         |
+| `make backup-config`   | Backup important configuration files        |
+| `make interactive`     | Run interactive installation menu           |
+| `make clone-workspace` | Clone project to /workspace directory       |
+| `make init-workspace`  | Initialize workspace and install essentials |
 
 ## Softwares
 
@@ -159,14 +214,19 @@ All installation scripts now include:
 ## 🔧 Requirements
 
 - Ubuntu Linux (18.04+)
+- Git (for cloning the repository)
 - sudo privileges
 - Internet connection
+- Basic command line knowledge
 
 ## 📖 Usage Examples
 
 ### Development Environment Setup
 
 ```bash
+# Navigate to workspace directory
+cd /workspace
+
 # Quick development setup
 make setup-dev
 
@@ -180,6 +240,9 @@ make install-python
 ### Web Server Setup
 
 ```bash
+# Navigate to workspace directory
+cd /workspace
+
 # Quick web server setup
 make setup-web
 
@@ -192,6 +255,9 @@ make install-docker
 ### System Maintenance
 
 ```bash
+# Navigate to workspace directory
+cd /workspace
+
 # Update system
 make update
 
