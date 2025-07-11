@@ -21,3 +21,6 @@ jobs:
 
       - name: Run install all
         run: make install-all
+
+      - name: Install status
+        run: make status
