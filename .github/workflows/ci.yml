@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install make
+        run: sudo apt-get install make
+
+      - name: Install dependencies
+        run: make init-workspace
+
+      - name: Run install all
+        run: make install-all
