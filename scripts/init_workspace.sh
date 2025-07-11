@@ -77,8 +77,8 @@ install_basic_git() {
     if ! command_exists git; then
         print_message $BLUE "安装基本的 Git..."
         if is_ci_environment; then
-            # CI 环境中通常有 sudo 权限但不需要密码
-            apt update && apt install -y git
+            # CI 环境中使用 sudo（GitHub Actions 镜像支持无密码 sudo）
+            sudo apt update && sudo apt install -y git
         else
             sudo apt update
             sudo apt install -y git
@@ -150,9 +150,8 @@ clone_workspace() {
 update_system() {
     print_message $CYAN "更新系统包..."
     if is_ci_environment; then
-        # CI 环境中只更新包列表，跳过耗时的升级操作
-        print_message $BLUE "CI 环境：仅更新包列表"
-        apt update
+        # CI 环境中跳过系统更新（CI镜像通常已是最新）
+        print_message $BLUE "CI 环境：跳过系统更新（使用最新镜像）"
     else
         sudo apt update && sudo apt upgrade -y
         sudo apt autoremove -y && sudo apt autoclean
