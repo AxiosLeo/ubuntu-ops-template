@@ -10,12 +10,14 @@ cd / && git clone https://github.com/AxiosLeo/ubuntu-ops-template.git workspace 
 ```
 
 **What `init-workspace` does:**
+
 - ✅ Sets up proper file permissions
 - ✅ Updates system packages
 - ✅ Installs Git with configuration
 - ✅ Prepares development environment
 
 **Next Steps:**
+
 ```bash
 # Install specific software
 make install-docker    # Docker & Docker Compose
@@ -33,17 +35,19 @@ make setup-web         # Web server environment
 
 ## 📦 Installation
 
-### Method 1: Quick Setup with Makefile (Recommended)
+### Method 1: Quick Setup with Standalone Script (Recommended)
 
-If you already have git and make installed, you can use this one-command setup:
+Download and run the standalone initialization script - no need to clone the repository first:
 
 ```bash
-# Clone and initialize workspace in one command
+# Download and run initialization script in one command
 # (Run this from any directory)
-curl -sSL https://raw.githubusercontent.com/axiosleo/ubuntu-ops-template/main/Makefile | sudo make -f - init-workspace
+curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
 
-# Or if you have the repo locally
-make init-workspace
+# Or download first, then run
+curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh -o init_workspace.sh
+chmod +x init_workspace.sh
+./init_workspace.sh
 ```
 
 ### Method 2: Manual Clone to System Root

@@ -167,15 +167,16 @@ clone-workspace: ## Clone project to /workspace directory
 	fi
 	@chmod +x /workspace/scripts/*.sh
 
-# Initialize workspace with basic setup
-init-workspace: clone-workspace ## Initialize workspace and install essentials
-	@printf "\033[0;36mInitializing workspace...\033[0m\n"
-	@cd /workspace && make update
-	@cd /workspace && make install-git
-	@printf "\033[0;32mWorkspace initialization completed!\033[0m\n"
-	@printf "\033[0;34mNext steps:\033[0m\n"
-	@printf "  cd /workspace\n"
-	@printf "  make help\n"
+# Initialize workspace with basic setup using dedicated script
+init-workspace: ## Initialize workspace and install essentials
+	@printf "\033[0;36mInitializing workspace using init_workspace.sh...\033[0m\n"
+	@if [ -f "$(SCRIPTS_DIR)/init_workspace.sh" ]; then \
+		chmod +x $(SCRIPTS_DIR)/init_workspace.sh; \
+		$(SCRIPTS_DIR)/init_workspace.sh; \
+	else \
+		printf "\033[1;33mLocal script not found, downloading from repository...\033[0m\n"; \
+		curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash; \
+	fi
 
 # Test installations
 test: ## Test if installed software is working correctly
