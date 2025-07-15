@@ -1,7 +1,7 @@
 # Ubuntu Ops Template Makefile
 # This Makefile provides convenient commands for installing and managing software
 
-.PHONY: help install-all install-git install-docker install-nginx install-nodejs install-python update clean check-deps clone-workspace init-workspace
+.PHONY: help install-all install-git install-docker install-podman install-nginx install-nodejs install-python update clean check-deps clone-workspace init-workspace
 
 # Default target
 .DEFAULT_GOAL := help
@@ -33,6 +33,7 @@ help: ## Show this help message
 	@printf "\033[0;34mExamples:\033[0m\n"
 	@printf "  make install-all     # Install all software\n"
 	@printf "  make install-docker  # Install Docker only\n"
+	@printf "  make install-podman  # Install Podman only\n"
 	@printf "  make update          # Update system packages\n"
 	@printf "  make interactive     # Run interactive installer\n"
 
@@ -82,6 +83,13 @@ install-docker: check-deps ## Install Docker CE and Docker Compose
 	@chmod +x $(SCRIPTS_DIR)/install_docker.sh
 	@$(SCRIPTS_DIR)/install_docker.sh
 	@printf "\033[0;32mDocker installation completed\033[0m\n"
+
+# Install Podman
+install-podman: check-deps ## Install Podman container engine
+	@printf "\033[0;36mInstalling Podman...\033[0m\n"
+	@chmod +x $(SCRIPTS_DIR)/install_podman.sh
+	@$(SCRIPTS_DIR)/install_podman.sh
+	@printf "\033[0;32mPodman installation completed\033[0m\n"
 
 # Install Nginx
 install-nginx: check-deps ## Install and configure Nginx web server
@@ -135,6 +143,7 @@ status: ## Show installation status of various software
 	@printf "\033[0;34mInstalled Software:\033[0m\n"
 	@printf "Git: "; if command -v git >/dev/null 2>&1; then printf "\033[0;32m✓ $$(git --version)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
 	@printf "Docker: "; if command -v docker >/dev/null 2>&1; then printf "\033[0;32m✓ $$(docker --version)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
+	@printf "Podman: "; if command -v podman >/dev/null 2>&1; then printf "\033[0;32m✓ $$(podman --version)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
 	@printf "Nginx: "; if command -v nginx >/dev/null 2>&1; then printf "\033[0;32m✓ $$(nginx -v 2>&1)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
 	@printf "Node.js: "; if command -v node >/dev/null 2>&1; then printf "\033[0;32m✓ $$(node --version)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
 	@printf "Python: "; if command -v python3 >/dev/null 2>&1; then printf "\033[0;32m✓ $$(python3 --version)\033[0m\n"; else printf "\033[0;31m✗ Not installed\033[0m\n"; fi
@@ -190,6 +199,11 @@ test: ## Test if installed software is working correctly
 	@if command -v docker >/dev/null 2>&1; then \
 		printf "\033[0;34mTesting Docker:\033[0m\n"; \
 		docker --version && printf "\033[0;32m✓ Docker is working\033[0m\n" || printf "\033[0;31m✗ Docker test failed\033[0m\n"; \
+		echo; \
+	fi
+	@if command -v podman >/dev/null 2>&1; then \
+		printf "\033[0;34mTesting Podman:\033[0m\n"; \
+		podman --version && printf "\033[0;32m✓ Podman is working\033[0m\n" || printf "\033[0;31m✗ Podman test failed\033[0m\n"; \
 		echo; \
 	fi
 	@if command -v nginx >/dev/null 2>&1; then \
