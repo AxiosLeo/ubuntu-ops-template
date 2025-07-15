@@ -78,18 +78,35 @@ clone_workspace() {
         print_message $GREEN "✓ 仓库已克隆到 $WORKSPACE_DIR"
     else
         print_message $YELLOW "⚠ $WORKSPACE_DIR 目录已存在"
-        read -p "是否继续？这将更新现有仓库 (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            cd "$WORKSPACE_DIR"
-            git pull origin main || print_message $YELLOW "无法更新仓库，继续使用现有版本"
+        print_message $BLUE "检查现有工作空间..."
+        
+        # 检查是否为 git 仓库
+        if [ -d "$WORKSPACE_DIR/.git" ]; then
+            read -p "是否更新现有仓库？ (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_message $CYAN "更新现有仓库..."
+                cd "$WORKSPACE_DIR"
+                git pull origin main || print_message $YELLOW "无法更新仓库，继续使用现有版本"
+                print_message $GREEN "✓ 仓库更新完成"
+            else
+                print_message $YELLOW "跳过仓库更新"
+            fi
         else
-            print_message $YELLOW "跳过仓库克隆"
+            print_message $YELLOW "目录存在但不是 git 仓库，跳过克隆操作"
         fi
+        
+        # 确保目录权限正确
+        sudo chown -R $USER:$USER "$WORKSPACE_DIR" 2>/dev/null || true
     fi
     
-    # 设置脚本权限
-    chmod +x "$WORKSPACE_DIR"/scripts/*.sh
+    # 设置脚本权限（如果脚本目录存在）
+    if [ -d "$WORKSPACE_DIR/scripts" ]; then
+        chmod +x "$WORKSPACE_DIR"/scripts/*.sh 2>/dev/null || print_message $YELLOW "无法设置脚本权限，请手动检查"
+        print_message $GREEN "✓ 脚本权限设置完成"
+    else
+        print_message $YELLOW "脚本目录不存在，跳过权限设置"
+    fi
 }
 
 # 更新系统包
