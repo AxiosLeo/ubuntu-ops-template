@@ -39,12 +39,17 @@ make setup-web         # Web server environment
 
 Download and run the standalone initialization script - no need to clone the repository first:
 
-```bash
-# Download and run initialization script in one command
-# (Run this from any directory)
-curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
+- Download and run initialization script in one command
 
-# Or download first, then run
+> Run this from any directory
+
+```bash
+curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
+```
+
+- Or download first, then run
+
+```bash
 curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh -o init_workspace.sh
 chmod +x init_workspace.sh
 ./init_workspace.sh
