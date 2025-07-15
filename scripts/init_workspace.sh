@@ -100,6 +100,17 @@ update_system() {
     print_message $GREEN "✓ 系统更新完成"
 }
 
+# 安装 make 工具
+install_make() {
+    if ! command_exists make; then
+        print_message $CYAN "安装 make 工具..."
+        sudo apt install -y make build-essential
+        print_message $GREEN "✓ make 安装完成: $(make --version | head -1)"
+    else
+        print_message $GREEN "✓ make 已存在: $(make --version | head -1)"
+    fi
+}
+
 # 安装和配置 Git（使用仓库中的脚本）
 install_git() {
     print_message $CYAN "安装和配置 Git..."
@@ -121,6 +132,7 @@ show_completion_info() {
     print_message $BLUE "已完成的操作:"
     print_message $GREEN "✅ 设置适当的文件权限"
     print_message $GREEN "✅ 更新系统包"
+    print_message $GREEN "✅ 安装 make 工具"
     print_message $GREEN "✅ 安装和配置 Git"
     print_message $GREEN "✅ 准备开发环境"
     echo
@@ -157,6 +169,10 @@ main() {
     
     # 更新系统
     update_system
+    echo
+    
+    # 安装 make 工具
+    install_make
     echo
     
     # 安装和配置 Git
