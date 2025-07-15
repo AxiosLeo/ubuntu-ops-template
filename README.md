@@ -47,6 +47,12 @@ Download and run the standalone initialization script - no need to clone the rep
 curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
 ```
 
+use this command in china
+
+```bash
+curl -sSL https://ghfast.top/https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
+```
+
 - Or download first, then run
 
 ```bash
