@@ -69,6 +69,11 @@ install_basic_git() {
     fi
 }
 
+# 检查是否为交互模式
+is_interactive() {
+    [[ -t 0 && -t 1 ]]
+}
+
 # 克隆仓库到工作空间
 clone_workspace() {
     if [ ! -d "$WORKSPACE_DIR" ]; then
@@ -82,9 +87,16 @@ clone_workspace() {
         
         # 检查是否为 git 仓库
         if [ -d "$WORKSPACE_DIR/.git" ]; then
-            read -p "是否更新现有仓库？ (y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if is_interactive; then
+                read -p "是否更新现有仓库？ (y/N): " -n 1 -r
+                echo
+                update_repo="$REPLY"
+            else
+                print_message $CYAN "非交互模式：自动更新现有仓库..."
+                update_repo="y"
+            fi
+            
+            if [[ $update_repo =~ ^[Yy]$ ]]; then
                 print_message $CYAN "更新现有仓库..."
                 cd "$WORKSPACE_DIR"
                 git pull origin main || print_message $YELLOW "无法更新仓库，继续使用现有版本"
