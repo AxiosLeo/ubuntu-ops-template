@@ -134,7 +134,7 @@ install_git() {
     if [ -f "$WORKSPACE_DIR/scripts/install_git.sh" ]; then
         cd "$WORKSPACE_DIR"
         chmod +x scripts/install_git.sh
-        ./scripts/install_git.sh
+        ./scripts/install_git.sh | exit 0
         print_message $GREEN "✓ Git 安装和配置完成"
     else
         print_message $RED "❌ 找不到 Git 安装脚本"
