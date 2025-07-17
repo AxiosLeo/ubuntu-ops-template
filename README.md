@@ -1,12 +1,29 @@
 # Ops Template for Ubuntu
 
-## 🚀 Quick Start
+Quick Setup with Standalone Script (Recommended)
 
-Clone and initialize the workspace with essential tools in one command:
+Download and run the standalone initialization script - no need to clone the repository first:
+
+- Download and run initialization script in one command
+
+> Run this from any directory
 
 ```bash
-# Clone to system root and initialize workspace
-cd / && git clone https://github.com/AxiosLeo/ubuntu-ops-template.git workspace && cd /workspace && make init-workspace
+curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
+```
+
+use this command in china
+
+```bash
+curl -sSL https://ghfast.top/https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
+```
+
+- Or download first, then run
+
+```bash
+curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh -o init_workspace.sh
+chmod +x init_workspace.sh
+./init_workspace.sh
 ```
 
 **What `init-workspace` does:**
@@ -35,33 +52,7 @@ make setup-web         # Web server environment
 
 ## 📦 Installation
 
-### Method 1: Quick Setup with Standalone Script (Recommended)
-
-Download and run the standalone initialization script - no need to clone the repository first:
-
-- Download and run initialization script in one command
-
-> Run this from any directory
-
-```bash
-curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
-```
-
-use this command in china
-
-```bash
-curl -sSL https://ghfast.top/https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh | bash
-```
-
-- Or download first, then run
-
-```bash
-curl -sSL https://raw.githubusercontent.com/AxiosLeo/ubuntu-ops-template/main/scripts/init_workspace.sh -o init_workspace.sh
-chmod +x init_workspace.sh
-./init_workspace.sh
-```
-
-### Method 2: Manual Clone to System Root
+### Method 1: Manual Clone to System Root
 
 Clone this repository to your system root directory and name it `workspace`:
 
@@ -82,7 +73,7 @@ chmod +x scripts/*.sh
 make make-executable
 ```
 
-### Method 3: Clone to User Directory
+### Method 2: Clone to User Directory
 
 If you prefer to clone to your user directory:
 
