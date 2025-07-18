@@ -1,6 +1,6 @@
-# Docker Compose 配置文件
+# Docker Compose configuration file
 
-# 数据卷配置
+# Data volume configuration
 volumes:
   mysql-data:
   redis-data:

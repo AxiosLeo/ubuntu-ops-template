@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# init_workspace.sh - 独立的工作空间初始化脚本
-# 可以直接下载并运行，无需预先克隆仓库
+# init_workspace.sh - Standalone workspace initialization script
+# Can be downloaded and run directly without cloning the repository first
 
-set -e  # 遇到错误时退出
+set -e  # Exit on error
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13,204 +13,204 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# 项目仓库 URL
+# Project repository URL
 REPO_URL="https://github.com/AxiosLeo/ubuntu-ops-template.git"
 WORKSPACE_DIR="/workspace"
 
-# 打印带颜色的消息
+# Print colored messages
 print_message() {
     local color=$1
     local message=$2
     echo -e "${color}${message}${NC}"
 }
 
-# 检查命令是否存在
+# Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# 检查系统依赖和要求
+# Check system dependencies and requirements
 check_deps() {
-    print_message $CYAN "检查系统依赖..."
+    print_message $CYAN "Checking system dependencies..."
     
-    # 检查是否为 Ubuntu 系统
+    # Check if it's Ubuntu system
     if [ ! -f /etc/lsb-release ] || ! grep -q "Ubuntu" /etc/lsb-release 2>/dev/null; then
-        print_message $YELLOW "警告: 此脚本专为 Ubuntu 设计"
+        print_message $YELLOW "Warning: This script is designed for Ubuntu"
     fi
     
-    # 检查 sudo 权限
+    # Check sudo permissions
     if ! sudo -n true 2>/dev/null; then
-        print_message $RED "错误: 需要 sudo 权限"
+        print_message $RED "Error: sudo privileges required"
         exit 1
     fi
     
-    # 检查网络连接
+    # Check network connection
     if ! ping -c 1 google.com >/dev/null 2>&1; then
-        print_message $YELLOW "警告: 检测不到网络连接"
+        print_message $YELLOW "Warning: No network connection detected"
     fi
     
-    # 检查必要命令
+    # Check necessary commands
     if ! command_exists git; then
-        print_message $YELLOW "Git 未安装，将在后续步骤中安装"
+        print_message $YELLOW "Git not installed, will be installed in subsequent steps"
     fi
     
-    print_message $GREEN "✓ 系统检查完成"
+    print_message $GREEN "✓ System check completed"
 }
 
-# 安装基本的 Git（如果还没安装）
+# Install basic Git (if not already installed)
 install_basic_git() {
     if ! command_exists git; then
-        print_message $BLUE "安装基本的 Git..."
+        print_message $BLUE "Installing basic Git..."
         sudo apt update
         sudo apt install -y git
-        print_message $GREEN "✓ Git 基本安装完成"
+        print_message $GREEN "✓ Basic Git installation completed"
     else
-        print_message $GREEN "✓ Git 已存在"
+        print_message $GREEN "✓ Git already exists"
     fi
 }
 
-# 检查是否为交互模式
+# Check if in interactive mode
 is_interactive() {
     [[ -t 0 && -t 1 ]]
 }
 
-# 克隆仓库到工作空间
+# Clone repository to workspace
 clone_workspace() {
     if [ ! -d "$WORKSPACE_DIR" ]; then
-        print_message $CYAN "克隆仓库到 $WORKSPACE_DIR..."
+        print_message $CYAN "Cloning repository to $WORKSPACE_DIR..."
         sudo git clone "$REPO_URL" "$WORKSPACE_DIR"
         sudo chown -R $USER:$USER "$WORKSPACE_DIR"
-        print_message $GREEN "✓ 仓库已克隆到 $WORKSPACE_DIR"
+        print_message $GREEN "✓ Repository cloned to $WORKSPACE_DIR"
     else
-        print_message $YELLOW "⚠ $WORKSPACE_DIR 目录已存在"
-        print_message $BLUE "检查现有工作空间..."
+        print_message $YELLOW "⚠ $WORKSPACE_DIR directory already exists"
+        print_message $BLUE "Checking existing workspace..."
         
-        # 检查是否为 git 仓库
+        # Check if it's a git repository
         if [ -d "$WORKSPACE_DIR/.git" ]; then
             if is_interactive; then
-                read -p "是否更新现有仓库？ (y/N): " -n 1 -r
+                read -p "Update existing repository? (y/N): " -n 1 -r
                 echo
                 update_repo="$REPLY"
             else
-                print_message $CYAN "非交互模式：自动更新现有仓库..."
+                print_message $CYAN "Non-interactive mode: automatically updating existing repository..."
                 update_repo="y"
             fi
             
             if [[ $update_repo =~ ^[Yy]$ ]]; then
-                print_message $CYAN "更新现有仓库..."
+                print_message $CYAN "Updating existing repository..."
                 cd "$WORKSPACE_DIR"
-                git pull origin main || print_message $YELLOW "无法更新仓库，继续使用现有版本"
-                print_message $GREEN "✓ 仓库更新完成"
+                git pull origin main || print_message $YELLOW "Cannot update repository, continuing with existing version"
+                print_message $GREEN "✓ Repository update completed"
             else
-                print_message $YELLOW "跳过仓库更新"
+                print_message $YELLOW "Skipping repository update"
             fi
         else
-            print_message $YELLOW "目录存在但不是 git 仓库，跳过克隆操作"
+            print_message $YELLOW "Directory exists but is not a git repository, skipping clone operation"
         fi
         
-        # 确保目录权限正确
+        # Ensure correct directory permissions
         sudo chown -R $USER:$USER "$WORKSPACE_DIR" 2>/dev/null || true
     fi
     
-    # 设置脚本权限（如果脚本目录存在）
+    # Set script permissions (if scripts directory exists)
     if [ -d "$WORKSPACE_DIR/scripts" ]; then
-        chmod +x "$WORKSPACE_DIR"/scripts/*.sh 2>/dev/null || print_message $YELLOW "无法设置脚本权限，请手动检查"
-        print_message $GREEN "✓ 脚本权限设置完成"
+        chmod +x "$WORKSPACE_DIR"/scripts/*.sh 2>/dev/null || print_message $YELLOW "Cannot set script permissions, please check manually"
+        print_message $GREEN "✓ Script permissions set"
     else
-        print_message $YELLOW "脚本目录不存在，跳过权限设置"
+        print_message $YELLOW "Scripts directory not found, skipping permission setup"
     fi
 }
 
-# 更新系统包
+# Update system packages
 update_system() {
-    print_message $CYAN "更新系统包..."
+    print_message $CYAN "Updating system packages..."
     sudo apt update && sudo apt upgrade -y
     sudo apt autoremove -y && sudo apt autoclean
-    print_message $GREEN "✓ 系统更新完成"
+    print_message $GREEN "✓ System update completed"
 }
 
-# 安装 make 工具
+# Install make tool
 install_make() {
     if ! command_exists make; then
-        print_message $CYAN "安装 make 工具..."
+        print_message $CYAN "Installing make tool..."
         sudo apt install -y make build-essential
-        print_message $GREEN "✓ make 安装完成: $(make --version | head -1)"
+        print_message $GREEN "✓ make installation completed: $(make --version | head -1)"
     else
-        print_message $GREEN "✓ make 已存在: $(make --version | head -1)"
+        print_message $GREEN "✓ make already exists: $(make --version | head -1)"
     fi
 }
 
-# 安装和配置 Git（使用仓库中的脚本）
+# Install and configure Git (using script from repository)
 install_git() {
-    print_message $CYAN "安装和配置 Git..."
+    print_message $CYAN "Installing and configuring Git..."
     if [ -f "$WORKSPACE_DIR/scripts/install_git.sh" ]; then
         cd "$WORKSPACE_DIR"
         chmod +x scripts/install_git.sh
         ./scripts/install_git.sh | exit 0
-        print_message $GREEN "✓ Git 安装和配置完成"
+        print_message $GREEN "✓ Git installation and configuration completed"
     else
-        print_message $RED "❌ 找不到 Git 安装脚本"
+        print_message $RED "❌ Git installation script not found"
         exit 1
     fi
 }
 
-# 显示完成信息
+# Show completion information
 show_completion_info() {
-    print_message $GREEN "=== 工作空间初始化完成！ ==="
+    print_message $GREEN "=== Workspace initialization completed! ==="
     echo
-    print_message $BLUE "已完成的操作:"
-    print_message $GREEN "✅ 设置适当的文件权限"
-    print_message $GREEN "✅ 更新系统包"
-    print_message $GREEN "✅ 安装 make 工具"
-    print_message $GREEN "✅ 安装和配置 Git"
-    print_message $GREEN "✅ 准备开发环境"
+    print_message $BLUE "Completed operations:"
+    print_message $GREEN "✅ Set proper file permissions"
+    print_message $GREEN "✅ Updated system packages"
+    print_message $GREEN "✅ Installed make tool"
+    print_message $GREEN "✅ Installed and configured Git"
+    print_message $GREEN "✅ Prepared development environment"
     echo
-    print_message $BLUE "下一步操作:"
+    print_message $BLUE "Next steps:"
     print_message $YELLOW "  cd /workspace"
-    print_message $YELLOW "  make help                # 查看所有可用命令"
-    print_message $YELLOW "  make install-docker      # 安装 Docker"
-    print_message $YELLOW "  make install-nodejs      # 安装 Node.js"
-    print_message $YELLOW "  make install-python      # 安装 Python"
-    print_message $YELLOW "  make install-all         # 安装所有软件"
+    print_message $YELLOW "  make help                # View all available commands"
+    print_message $YELLOW "  make install-docker      # Install Docker"
+    print_message $YELLOW "  make install-nodejs      # Install Node.js"
+    print_message $YELLOW "  make install-python      # Install Python"
+    print_message $YELLOW "  make install-all         # Install all software"
     echo
-    print_message $BLUE "环境配置选项:"
-    print_message $YELLOW "  make setup-dev           # 完整开发环境"
-    print_message $YELLOW "  make setup-web           # Web 服务器环境"
-    print_message $YELLOW "  make setup-basic         # 基本服务器环境"
+    print_message $BLUE "Environment configuration options:"
+    print_message $YELLOW "  make setup-dev           # Complete development environment"
+    print_message $YELLOW "  make setup-web           # Web server environment"
+    print_message $YELLOW "  make setup-basic         # Basic server environment"
 }
 
-# 主函数
+# Main function
 main() {
-    print_message $CYAN "=== Ubuntu Ops Template 工作空间初始化 ==="
+    print_message $CYAN "=== Ubuntu Ops Template Workspace Initialization ==="
     echo
     
-    # 检查系统依赖
+    # Check system dependencies
     check_deps
     echo
     
-    # 安装基本 Git
+    # Install basic Git
     install_basic_git
     echo
     
-    # 克隆工作空间
+    # Clone workspace
     clone_workspace
     echo
     
-    # 更新系统
+    # Update system
     update_system
     echo
     
-    # 安装 make 工具
+    # Install make tool
     install_make
     echo
     
-    # 安装和配置 Git
+    # Install and configure Git
     install_git
     echo
     
-    # 显示完成信息
+    # Show completion information
     show_completion_info
 }
 
-# 运行主函数
+# Run main function
 main "$@"
