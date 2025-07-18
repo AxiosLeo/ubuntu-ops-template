@@ -1,0 +1,3 @@
+# [submodule "projects/<project-name>"]
+# 	path = projects/<project-name>
+# 	url = <git-clone-url>
