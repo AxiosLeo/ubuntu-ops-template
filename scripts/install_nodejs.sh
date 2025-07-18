@@ -36,7 +36,7 @@ if command -v node &> /dev/null; then
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         log_info "Installation cancelled"
-        exit 0
+        # exit 0
     fi
 fi
 
@@ -104,4 +104,12 @@ log_info "  - npm -v"
 log_info "  - yarn -v"
 log_info "  - pnpm -v"
 log_info "  - pm2 -v"
-log_warn "Please restart your terminal or run 'source ~/.bashrc' to use NVM commands."
+
+# Detect current shell and provide appropriate instructions
+if [[ "$SHELL" == *"zsh"* ]]; then
+    log_warn "Please restart your terminal or run 'source ~/.zshrc' to use NVM commands in zsh."
+elif [[ "$SHELL" == *"bash"* ]]; then
+    log_warn "Please restart your terminal or run 'source ~/.bashrc' to use NVM commands."
+else
+    log_warn "Please restart your terminal to use NVM commands, or check your shell's configuration file."
+fi
