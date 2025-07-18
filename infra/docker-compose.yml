@@ -176,20 +176,3 @@ services:
           memory: 256M
           cpus: '0.1'
 
-  postgres:
-    image: docker.m.daocloud.io/postgis/postgis:13-3.5  #postgres:13.4
-    container_name: "infra-postgres"
-    restart: 'on-failure:3'
-    environment:
-      TZ: Asia/Shanghai
-      POSTGRES_PASSWORD: ${POSTGRESQL_PASS}
-      #POSTGRES_DB: default
-    ports:
-      - "35432:5432"
-    volumes:
-      - "postgres-data:/var/lib/postgresql/data"
-      - "postgres-log:/var/log/postgresql"
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
