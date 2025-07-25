@@ -10,8 +10,16 @@
 # 脚本配置
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 LOG_DIR="${SCRIPT_DIR}/../runtime"
-NORMAL_LOG="${LOG_DIR}/monitor.log"
-ALERT_LOG="${LOG_DIR}/monitor_alert.log"
+
+# 生成带年月的日志文件名
+get_log_filename() {
+    local base_name="$1"
+    local year_month=$(date '+%Y%m')
+    echo "${LOG_DIR}/${base_name}_${year_month}.log"
+}
+
+NORMAL_LOG=$(get_log_filename "monitor")
+ALERT_LOG=$(get_log_filename "monitor_alert")
 PID_FILE="${LOG_DIR}/monitor.pid"
 
 # 监控配置
@@ -210,12 +218,13 @@ show_help() {
     echo "用法: $0 [选项]"
     echo ""
     echo "选项:"
-    echo "  start           启动监控服务"
-    echo "  stop            停止监控服务"
-    echo "  status          查看监控状态"
-    echo "  logs            查看监控日志"
-    echo "  alerts          查看告警日志"
-    echo "  -h, --help      显示此帮助信息"
+echo "  start           启动监控服务"
+echo "  stop            停止监控服务"
+echo "  status          查看监控状态"
+echo "  logs            查看监控日志"
+echo "  alerts          查看告警日志"
+echo "  list-logs       列出所有日志文件"
+echo "  -h, --help      显示此帮助信息"
     echo ""
     echo "配置参数:"
     echo "  监控间隔: ${MONITOR_INTERVAL}秒"
@@ -233,20 +242,54 @@ show_help() {
 # 查看日志
 view_logs() {
     if [[ -f "$NORMAL_LOG" ]]; then
-        echo -e "${BLUE}=== 普通监控日志 (最后20行) ===${NC}"
+        echo -e "${BLUE}=== 普通监控日志 (最后20行) - $(basename "$NORMAL_LOG") ===${NC}"
         tail -n 20 "$NORMAL_LOG"
     else
-        echo -e "${YELLOW}普通监控日志文件不存在${NC}"
+        echo -e "${YELLOW}普通监控日志文件不存在: $(basename "$NORMAL_LOG")${NC}"
     fi
 }
 
 # 查看告警日志
 view_alerts() {
     if [[ -f "$ALERT_LOG" ]]; then
-        echo -e "${RED}=== 告警日志 (最后50行) ===${NC}"
+        echo -e "${RED}=== 告警日志 (最后50行) - $(basename "$ALERT_LOG") ===${NC}"
         tail -n 50 "$ALERT_LOG"
     else
-        echo -e "${YELLOW}告警日志文件不存在${NC}"
+        echo -e "${YELLOW}告警日志文件不存在: $(basename "$ALERT_LOG")${NC}"
+    fi
+}
+
+# 列出所有日志文件
+list_log_files() {
+    echo -e "${BLUE}=== 所有监控日志文件 ===${NC}"
+    echo ""
+    
+    # 列出普通监控日志
+    echo -e "${GREEN}普通监控日志:${NC}"
+    if ls "${LOG_DIR}"/monitor_*.log 2>/dev/null | grep -q .; then
+        ls -lh "${LOG_DIR}"/monitor_*.log | grep -v alert
+    else
+        echo "  无普通监控日志文件"
+    fi
+    
+    echo ""
+    
+    # 列出告警日志
+    echo -e "${RED}告警日志:${NC}"
+    if ls "${LOG_DIR}"/monitor_alert_*.log 2>/dev/null | grep -q .; then
+        ls -lh "${LOG_DIR}"/monitor_alert_*.log
+    else
+        echo "  无告警日志文件"
+    fi
+    
+    echo ""
+    
+    # 列出备份文件
+    echo -e "${YELLOW}备份文件:${NC}"
+    if ls "${LOG_DIR}"/monitor_*.log.* 2>/dev/null | grep -q .; then
+        ls -lh "${LOG_DIR}"/monitor_*.log.*
+    else
+        echo "  无备份文件"
     fi
 }
 
@@ -316,6 +359,9 @@ main() {
             ;;
         "alerts")
             view_alerts
+            ;;
+        "list-logs")
+            list_log_files
             ;;
         "-h"|"--help")
             show_help
