@@ -24,6 +24,28 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Auto-detect or honor explicit USE_CHINA_MIRROR={0|1|auto}. Selects
+# Aliyun mirror for the Docker apt repo when china mirrors are in effect.
+USE_CHINA_MIRROR="${USE_CHINA_MIRROR:-auto}"
+if [ "$USE_CHINA_MIRROR" = "auto" ]; then
+    log_info "Probing GitHub reachability (5s) to pick mirror..."
+    if curl -sI --connect-timeout 5 --max-time 5 \
+            https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh \
+            2>/dev/null | grep -q "^HTTP"; then
+        USE_CHINA_MIRROR=0
+    else
+        USE_CHINA_MIRROR=1
+    fi
+fi
+if [ "$USE_CHINA_MIRROR" = "1" ]; then
+    DOCKER_REPO_BASE="https://mirrors.aliyun.com/docker-ce/linux/ubuntu"
+    log_warn "Mirror mode: china (Docker repo: $DOCKER_REPO_BASE)"
+else
+    DOCKER_REPO_BASE="https://download.docker.com/linux/ubuntu"
+    log_info "Mirror mode: direct (Docker repo: $DOCKER_REPO_BASE)"
+fi
+export USE_CHINA_MIRROR
+
 # Check if Docker is already installed
 if command -v docker &> /dev/null; then
     log_warn "Docker is already installed: $(docker --version)"
@@ -37,10 +59,11 @@ fi
 
 log_info "Starting Docker installation..."
 
-# Check network connectivity
+# Check basic network connectivity. We probe a CN-reachable host so this
+# doesn't always warn on china servers (google.com is blocked there).
 check_network() {
     log_info "Checking network connectivity..."
-    if curl -s --connect-timeout 10 https://www.google.com > /dev/null 2>&1; then
+    if curl -s --connect-timeout 10 "$DOCKER_REPO_BASE/" > /dev/null 2>&1; then
         log_info "Network connectivity: OK"
         return 0
     else
@@ -79,7 +102,7 @@ add_docker_gpg_key() {
     while [ $attempt -le $max_attempts ]; do
         log_info "Attempt $attempt/$max_attempts to download Docker GPG key..."
         
-        if curl -fsSL --connect-timeout 30 --max-time 60 https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null; then
+        if curl -fsSL --connect-timeout 30 --max-time 60 "$DOCKER_REPO_BASE/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null; then
             sudo chmod a+r /etc/apt/keyrings/docker.gpg
             log_info "Docker GPG key added successfully"
             return 0
@@ -101,7 +124,7 @@ add_docker_gpg_key() {
 if ! add_docker_gpg_key; then
     log_warn "Using alternative method to add Docker repository..."
     # Alternative: Add repository without GPG verification (less secure but works)
-    echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    echo "deb [arch=$(dpkg --print-architecture)] $DOCKER_REPO_BASE $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
         sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     log_warn "Added Docker repository without GPG verification"
 fi
@@ -110,7 +133,7 @@ fi
 if [ -f /etc/apt/keyrings/docker.gpg ]; then
     log_info "Adding Docker repository with GPG verification..."
     echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] $DOCKER_REPO_BASE \
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 else

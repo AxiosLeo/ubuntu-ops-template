@@ -24,6 +24,27 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Auto-detect or honor explicit USE_CHINA_MIRROR={0|1|auto}.
+USE_CHINA_MIRROR="${USE_CHINA_MIRROR:-auto}"
+if [ "$USE_CHINA_MIRROR" = "auto" ]; then
+    print_message $BLUE "Probing GitHub reachability (5s) to pick mirror..."
+    if curl -sI --connect-timeout 5 --max-time 5 \
+            https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh \
+            2>/dev/null | grep -q "^HTTP"; then
+        USE_CHINA_MIRROR=0
+    else
+        USE_CHINA_MIRROR=1
+    fi
+fi
+if [ "$USE_CHINA_MIRROR" = "1" ]; then
+    GH_PROXY="https://ghfast.top/"
+    print_message $YELLOW "Mirror mode: china (set USE_CHINA_MIRROR=0 to disable)"
+else
+    GH_PROXY=""
+    print_message $GREEN "Mirror mode: direct"
+fi
+export USE_CHINA_MIRROR
+
 # Check if zsh is already installed
 check_zsh_installed() {
     if command_exists zsh; then
@@ -147,10 +168,11 @@ install_oh_my_zsh() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_message $BLUE "Installing Oh My Zsh..."
+        local omz_url="${GH_PROXY}https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
         if command_exists curl; then
-            sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+            sh -c "$(curl --connect-timeout 10 --max-time 120 --retry 3 -fsSL "$omz_url")" "" --unattended
         elif command_exists wget; then
-            sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" "" --unattended
+            sh -c "$(wget --timeout=30 --tries=3 "$omz_url" -O -)" "" --unattended
         else
             print_message $RED "❌ curl or wget is required to download Oh My Zsh"
             return 1

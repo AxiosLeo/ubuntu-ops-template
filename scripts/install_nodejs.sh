@@ -24,8 +24,32 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Auto-detect or honor explicit USE_CHINA_MIRROR={0|1|auto}.
+# Sets GH_PROXY to "https://ghfast.top/" when china mirrors are in effect.
+USE_CHINA_MIRROR="${USE_CHINA_MIRROR:-auto}"
+if [ "$USE_CHINA_MIRROR" = "auto" ]; then
+    log_info "Probing GitHub reachability (5s) to pick mirror..."
+    if curl -sI --connect-timeout 5 --max-time 5 \
+            https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh \
+            2>/dev/null | grep -q "^HTTP"; then
+        USE_CHINA_MIRROR=0
+    else
+        USE_CHINA_MIRROR=1
+    fi
+fi
+if [ "$USE_CHINA_MIRROR" = "1" ]; then
+    GH_PROXY="https://ghfast.top/"
+    log_warn "Mirror mode: china (set USE_CHINA_MIRROR=0 to disable)"
+else
+    GH_PROXY=""
+    log_info "Mirror mode: direct"
+fi
+export USE_CHINA_MIRROR
+
 # Node.js version to install
 NODE_VERSION="22"
+# NVM version (kept current; v0.39.0 was the previous default)
+NVM_VERSION="v0.40.1"
 
 log_info "Starting Node.js installation..."
 
@@ -52,13 +76,20 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
     source "$HOME/.nvm/nvm.sh"
 else
     # Install NVM
-    log_info "Installing NVM (Node Version Manager)..."
+    log_info "Installing NVM (Node Version Manager) ${NVM_VERSION}..."
     
-    # Download and install NVM from GitHub (more reliable than gitee mirror)
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    # Tell NVM's install.sh to clone via the proxy too (avoids a second
+    # GitHub round-trip that would otherwise hang on china networks).
+    if [ "$USE_CHINA_MIRROR" = "1" ]; then
+        export NVM_SOURCE="${GH_PROXY}https://github.com/nvm-sh/nvm.git"
+        export NVM_NODEJS_ORG_MIRROR="https://npmmirror.com/mirrors/node/"
+        export NVM_IOJS_ORG_MIRROR="https://npmmirror.com/mirrors/iojs/"
+    fi
     
-    # Alternative: Use gitee mirror for China users
-    # curl -o- https://gitee.com/AxiosLeo/nvm-proxy/raw/master/v0.39.0/install.sh | bash
+    # Download with timeout + retry so we fail fast instead of hanging
+    # forever on a stalled GitHub connection.
+    curl --connect-timeout 10 --max-time 120 --retry 3 -fsSL \
+        "${GH_PROXY}https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
     
     # Source NVM
     export NVM_DIR="$HOME/.nvm"
@@ -84,11 +115,9 @@ nvm alias default $NODE_VERSION
 log_info "Node.js version: $(node -v)"
 log_info "NPM version: $(npm -v)"
 
-# Configure npm registry (optional, for China users)
-read -p "Do you want to configure npm to use Taobao registry? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    log_info "Configuring npm registry..."
+# Configure npm registry automatically based on USE_CHINA_MIRROR
+if [ "$USE_CHINA_MIRROR" = "1" ]; then
+    log_info "Configuring npm registry to npmmirror (china mirror)..."
     npm config set registry https://registry.npmmirror.com
     log_info "NPM registry: $(npm config get registry)"
 fi

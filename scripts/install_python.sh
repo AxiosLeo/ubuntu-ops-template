@@ -24,6 +24,26 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Auto-detect or honor explicit USE_CHINA_MIRROR={0|1|auto}. Affects
+# Miniconda installer URL, conda channels and pip index.
+USE_CHINA_MIRROR="${USE_CHINA_MIRROR:-auto}"
+if [ "$USE_CHINA_MIRROR" = "auto" ]; then
+    log_info "Probing GitHub reachability (5s) to pick mirror..."
+    if curl -sI --connect-timeout 5 --max-time 5 \
+            https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh \
+            2>/dev/null | grep -q "^HTTP"; then
+        USE_CHINA_MIRROR=0
+    else
+        USE_CHINA_MIRROR=1
+    fi
+fi
+if [ "$USE_CHINA_MIRROR" = "1" ]; then
+    log_warn "Mirror mode: china (set USE_CHINA_MIRROR=0 to disable)"
+else
+    log_info "Mirror mode: direct"
+fi
+export USE_CHINA_MIRROR
+
 # Error handling function
 handle_conda_error() {
     local exit_code=$1
@@ -123,10 +143,15 @@ if [ "$conda_installed" != "true" ]; then
 
     # Download Miniconda installer
     log_info "Downloading Miniconda installer..."
-    MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+    if [ "$USE_CHINA_MIRROR" = "1" ]; then
+        MINICONDA_URL="https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+    else
+        MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+    fi
+    log_info "Source: $MINICONDA_URL"
 
-    # Try to download from official source
-    if wget --timeout=30 -O "$MINICONDA_INSTALLER" "$MINICONDA_URL"; then
+    # Try to download with retries; --timeout is per-attempt, --tries=3 retries network errors
+    if wget --timeout=30 --tries=3 -O "$MINICONDA_INSTALLER" "$MINICONDA_URL"; then
         log_info "Miniconda installer downloaded successfully"
     else
         log_error "Failed to download Miniconda installer"
@@ -158,6 +183,18 @@ if [ "$conda_installed" != "true" ]; then
 
     # Source conda to make it available in current session
     eval "$($MINICONDA_DIR/bin/conda shell.bash hook)"
+
+    # Configure conda channels and pip index for china mirror if needed.
+    # Doing this BEFORE the first conda/pip download so package fetching
+    # also benefits, not just the channel list.
+    if [ "$USE_CHINA_MIRROR" = "1" ]; then
+        log_info "Configuring conda channels to use Tsinghua TUNA mirror..."
+        conda config --set show_channel_urls yes
+        conda config --remove-key channels 2>/dev/null || true
+        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
+        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+    fi
 
     # Accept Terms of Service before any operations
     accept_conda_tos
@@ -207,6 +244,14 @@ if [ "$conda_installed" != "true" ]; then
         conda install -n "$ENV_NAME" -y pip setuptools wheel || true
     fi
 
+    # Configure pip index automatically based on USE_CHINA_MIRROR so that
+    # the upcoming pip install is fast.
+    if [ "$USE_CHINA_MIRROR" = "1" ]; then
+        log_info "Configuring pip to use Aliyun mirror..."
+        conda run -n "$ENV_NAME" pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+        conda run -n "$ENV_NAME" pip config set install.trusted-host mirrors.aliyun.com
+    fi
+
     # Install additional packages via pip with error handling
     log_info "Installing additional packages via pip..."
     set +e
@@ -221,16 +266,6 @@ if [ "$conda_installed" != "true" ]; then
     
     if [ $pip_install_exit_code -ne 0 ]; then
         log_warn "Some pip packages failed to install, continuing..."
-    fi
-
-    # Configure pip (optional)
-    echo -n "Do you want to configure pip to use China mirror? [y/N] (default: N): "
-    read -r REPLY
-    REPLY=${REPLY:-N}
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Configuring pip to use Tencent Cloud mirror..."
-        conda run -n "$ENV_NAME" pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple
-        log_info "Pip mirror configured"
     fi
 fi
 

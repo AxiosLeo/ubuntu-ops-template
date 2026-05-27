@@ -120,7 +120,36 @@ disable_apt_locks() {
     print_message $GREEN "  done"
 }
 
-# Project repository URL
+# Detect whether to route GitHub downloads via a China-friendly proxy.
+# Honors explicit USE_CHINA_MIRROR={0|1|auto}; default auto probes the
+# network and decides. Sets GH_PROXY to either "" or "https://ghfast.top/"
+# and exports USE_CHINA_MIRROR so child scripts skip re-probing.
+GH_PROXY=""
+detect_china_mirror() {
+    USE_CHINA_MIRROR="${USE_CHINA_MIRROR:-auto}"
+    if [ "$USE_CHINA_MIRROR" = "auto" ]; then
+        print_message $CYAN "Probing GitHub reachability (5s) to pick mirror..."
+        if curl -sI --connect-timeout 5 --max-time 5 \
+                https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh \
+                2>/dev/null | grep -q "^HTTP"; then
+            USE_CHINA_MIRROR=0
+        else
+            USE_CHINA_MIRROR=1
+        fi
+    fi
+    if [ "$USE_CHINA_MIRROR" = "1" ]; then
+        GH_PROXY="https://ghfast.top/"
+        print_message $YELLOW "  Mirror mode: china (GH_PROXY=${GH_PROXY})"
+        print_message $YELLOW "  Override with USE_CHINA_MIRROR=0 to force direct GitHub"
+    else
+        GH_PROXY=""
+        print_message $GREEN "  Mirror mode: direct (no proxy)"
+    fi
+    export USE_CHINA_MIRROR
+}
+
+# Project repository URL (GH_PROXY is prepended at clone time, not here,
+# because GH_PROXY is only known after detect_china_mirror runs).
 REPO_URL="https://github.com/AxiosLeo/ubuntu-ops-template.git"
 WORKSPACE_DIR="/workspace"
 
@@ -185,7 +214,7 @@ is_interactive() {
 clone_workspace() {
     if [ ! -d "$WORKSPACE_DIR" ]; then
         print_message $CYAN "Cloning repository to $WORKSPACE_DIR..."
-        sudo git clone "$REPO_URL" "$WORKSPACE_DIR"
+        sudo git clone "${GH_PROXY}${REPO_URL}" "$WORKSPACE_DIR"
         sudo chown -R $USER:$USER "$WORKSPACE_DIR"
         print_message $GREEN "✓ Repository cloned to $WORKSPACE_DIR"
     else
@@ -336,6 +365,10 @@ main() {
     
     # Check system dependencies
     check_deps
+    echo
+    
+    # Pick GitHub mirror (probes or honors USE_CHINA_MIRROR env)
+    detect_china_mirror
     echo
     
     # Release apt/dpkg locks held by unattended-upgrades or apt-daily*
