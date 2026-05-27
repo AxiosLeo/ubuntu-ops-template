@@ -29,50 +29,95 @@ apt_quiet() {
         -y "$@"
 }
 
-# Stop the system's automatic unattended-upgrades and apt-daily timers/services
-# so they don't fight us for the dpkg lock. We only stop them for this run
-# (no `systemctl disable`); they will come back on next boot.
+# Force-release dpkg/apt locks. This script is meant for fresh server
+# initialization, so it's safe to kill any apt/dpkg process holding the
+# lock -- typically a stale apt left behind by a previously interrupted
+# run (e.g. user Ctrl+C on a debconf TUI), or the system's
+# unattended-upgrades. After killing we run `dpkg --configure -a` to
+# repair any half-done dpkg state.
+#
+# Strategy:
+#   1. systemctl stop the system-managed apt timers/services (politely)
+#   2. fuser the four lock files to discover ALL holding PIDs
+#   3. SIGTERM holders, wait up to 10s
+#   4. Still held -> SIGKILL, wait up to 10s
+#   5. Still held -> bail with diagnostics
+#   6. dpkg --configure -a to repair interrupted state
+#
+# We only `stop` services for this run (no `systemctl disable`); they
+# will come back on next boot.
 disable_apt_locks() {
-    print_message $CYAN "Releasing apt/dpkg locks (stopping unattended-upgrades and apt-daily)..."
+    print_message $CYAN "Releasing apt/dpkg locks..."
 
-    local services=(
-        unattended-upgrades.service
-        apt-daily.timer
-        apt-daily-upgrade.timer
-        apt-daily.service
-        apt-daily-upgrade.service
+    local locks=(
+        /var/lib/dpkg/lock-frontend
+        /var/lib/dpkg/lock
+        /var/lib/apt/lists/lock
+        /var/cache/apt/archives/lock
     )
-    for svc in "${services[@]}"; do
+
+    _locks_held() {
+        local f
+        for f in "${locks[@]}"; do
+            sudo fuser "$f" >/dev/null 2>&1 && return 0
+        done
+        return 1
+    }
+
+    _signal_holders() {
+        local sig=$1 lock pid pids cmd
+        for lock in "${locks[@]}"; do
+            [ -e "$lock" ] || continue
+            pids=$(sudo fuser "$lock" 2>/dev/null | grep -oE '[0-9]+' | sort -u)
+            for pid in $pids; do
+                cmd=$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ' || echo '?')
+                print_message $YELLOW "  Sending SIG${sig#-} to PID ${pid} (${cmd}) holding ${lock}"
+                sudo kill "$sig" "$pid" 2>/dev/null || true
+            done
+        done
+    }
+
+    local svc
+    for svc in unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service; do
         if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
             sudo systemctl stop "$svc" 2>/dev/null || true
         fi
     done
 
-    if pgrep -x unattended-upgr >/dev/null 2>&1; then
-        sudo pkill -TERM -x unattended-upgr 2>/dev/null || true
+    if ! _locks_held; then
+        print_message $GREEN "  done (locks were already free)"
+        return 0
     fi
 
-    local waited=0
-    local interval=2
-    local max_wait=30
-    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
-       || sudo fuser /var/lib/dpkg/lock          >/dev/null 2>&1 \
-       || sudo fuser /var/lib/apt/lists/lock     >/dev/null 2>&1; do
-        if [ "$waited" -ge "$max_wait" ]; then
-            print_message $RED "Could not release apt/dpkg lock within ${max_wait}s."
-            print_message $YELLOW "  Inspect: sudo lsof /var/lib/dpkg/lock-frontend"
-            print_message $YELLOW "  Or wait a moment and re-run this script."
-            exit 1
-        fi
-        sleep "$interval"
-        waited=$((waited + interval))
+    local waited
+
+    _signal_holders -TERM
+    waited=0
+    while _locks_held && [ "$waited" -lt 10 ]; do
+        sleep 1
+        waited=$((waited + 1))
     done
 
-    if [ "$waited" -gt 0 ]; then
-        print_message $GREEN "  done (waited ${waited}s for processes to exit)"
-    else
-        print_message $GREEN "  done (locks were already free)"
+    if _locks_held; then
+        print_message $YELLOW "  Locks still held after SIGTERM; escalating to SIGKILL..."
+        _signal_holders -KILL
+        waited=0
+        while _locks_held && [ "$waited" -lt 10 ]; do
+            sleep 1
+            waited=$((waited + 1))
+        done
     fi
+
+    if _locks_held; then
+        print_message $RED "Could not release apt/dpkg lock even after SIGKILL."
+        print_message $YELLOW "  Inspect: sudo lsof /var/lib/dpkg/lock-frontend"
+        exit 1
+    fi
+
+    print_message $CYAN "  Repairing dpkg state with 'dpkg --configure -a'..."
+    sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a >/dev/null 2>&1 || true
+
+    print_message $GREEN "  done"
 }
 
 # Project repository URL
