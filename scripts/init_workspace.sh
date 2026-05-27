@@ -25,7 +25,54 @@ apt_quiet() {
         apt-get \
         -o Dpkg::Options::="--force-confdef" \
         -o Dpkg::Options::="--force-confnew" \
+        -o DPkg::Lock::Timeout=300 \
         -y "$@"
+}
+
+# Stop the system's automatic unattended-upgrades and apt-daily timers/services
+# so they don't fight us for the dpkg lock. We only stop them for this run
+# (no `systemctl disable`); they will come back on next boot.
+disable_apt_locks() {
+    print_message $CYAN "Releasing apt/dpkg locks (stopping unattended-upgrades and apt-daily)..."
+
+    local services=(
+        unattended-upgrades.service
+        apt-daily.timer
+        apt-daily-upgrade.timer
+        apt-daily.service
+        apt-daily-upgrade.service
+    )
+    for svc in "${services[@]}"; do
+        if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
+            sudo systemctl stop "$svc" 2>/dev/null || true
+        fi
+    done
+
+    if pgrep -x unattended-upgr >/dev/null 2>&1; then
+        sudo pkill -TERM -x unattended-upgr 2>/dev/null || true
+    fi
+
+    local waited=0
+    local interval=2
+    local max_wait=30
+    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+       || sudo fuser /var/lib/dpkg/lock          >/dev/null 2>&1 \
+       || sudo fuser /var/lib/apt/lists/lock     >/dev/null 2>&1; do
+        if [ "$waited" -ge "$max_wait" ]; then
+            print_message $RED "Could not release apt/dpkg lock within ${max_wait}s."
+            print_message $YELLOW "  Inspect: sudo lsof /var/lib/dpkg/lock-frontend"
+            print_message $YELLOW "  Or wait a moment and re-run this script."
+            exit 1
+        fi
+        sleep "$interval"
+        waited=$((waited + interval))
+    done
+
+    if [ "$waited" -gt 0 ]; then
+        print_message $GREEN "  done (waited ${waited}s for processes to exit)"
+    else
+        print_message $GREEN "  done (locks were already free)"
+    fi
 }
 
 # Project repository URL
@@ -244,6 +291,10 @@ main() {
     
     # Check system dependencies
     check_deps
+    echo
+    
+    # Release apt/dpkg locks held by unattended-upgrades or apt-daily*
+    disable_apt_locks
     echo
     
     # Install basic Git
