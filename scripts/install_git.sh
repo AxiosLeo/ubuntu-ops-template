@@ -24,6 +24,21 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Non-interactive apt wrapper to avoid debconf/needrestart TUI prompts
+# (e.g. the sshd_config conffile dialog when upgrading openssh-server).
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+
+apt_quiet() {
+    sudo -E DEBIAN_FRONTEND=noninteractive \
+        NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 \
+        apt-get \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confnew" \
+        -y "$@"
+}
+
 # Default Git configuration
 DEFAULT_USER_NAME="axiosleo"
 DEFAULT_USER_EMAIL="axiosleo@foxmail.com"
@@ -42,10 +57,10 @@ if command -v git &> /dev/null; then
 else
     # Update package index and install Git
     log_info "Updating package index..."
-    sudo apt update
+    apt_quiet update
     
     log_info "Installing Git..."
-    sudo apt install -y git
+    apt_quiet install git
     
     log_info "Git installed successfully: $(git --version)"
 fi

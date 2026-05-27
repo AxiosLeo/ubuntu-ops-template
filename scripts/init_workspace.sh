@@ -13,6 +13,21 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Non-interactive apt wrapper to avoid debconf/needrestart TUI prompts
+# (e.g. the sshd_config conffile dialog when upgrading openssh-server).
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+
+apt_quiet() {
+    sudo -E DEBIAN_FRONTEND=noninteractive \
+        NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 \
+        apt-get \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confnew" \
+        -y "$@"
+}
+
 # Project repository URL
 REPO_URL="https://github.com/AxiosLeo/ubuntu-ops-template.git"
 WORKSPACE_DIR="/workspace"
@@ -61,8 +76,8 @@ check_deps() {
 install_basic_git() {
     if ! command_exists git; then
         print_message $BLUE "Installing basic Git..."
-        sudo apt update
-        sudo apt install -y git
+        apt_quiet update
+        apt_quiet install git
         print_message $GREEN "✓ Basic Git installation completed"
     else
         print_message $GREEN "✓ Git already exists"
@@ -121,11 +136,45 @@ clone_workspace() {
     fi
 }
 
+# Backup critical config files that apt upgrade may overwrite under
+# the --force-confnew strategy (most notably /etc/ssh/sshd_config).
+# Backups are written next to the original file with a .bak.<timestamp>
+# suffix so they're easy to find and restore.
+BACKUP_TIMESTAMP=""
+BACKUP_PATHS=()
+
+backup_critical_configs() {
+    BACKUP_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    local files=(
+        "/etc/ssh/sshd_config"
+        "/etc/ssh/ssh_config"
+    )
+
+    print_message $CYAN "Backing up critical config files before upgrade..."
+    BACKUP_PATHS=()
+    for file in "${files[@]}"; do
+        if [ -f "$file" ]; then
+            local backup="${file}.bak.${BACKUP_TIMESTAMP}"
+            if sudo cp -a "$file" "$backup" 2>/dev/null; then
+                print_message $GREEN "  ✓ ${file} -> ${backup}"
+                BACKUP_PATHS+=("$backup")
+            else
+                print_message $YELLOW "  ⚠ Failed to backup ${file}"
+            fi
+        fi
+    done
+
+    if [ ${#BACKUP_PATHS[@]} -eq 0 ]; then
+        print_message $YELLOW "  (no critical config files found to backup)"
+    fi
+}
+
 # Update system packages
 update_system() {
     print_message $CYAN "Updating system packages..."
-    sudo apt update && sudo apt upgrade -y
-    sudo apt autoremove -y && sudo apt autoclean
+    backup_critical_configs
+    apt_quiet update && apt_quiet upgrade
+    apt_quiet autoremove && apt_quiet autoclean
     print_message $GREEN "✓ System update completed"
 }
 
@@ -133,7 +182,7 @@ update_system() {
 install_make() {
     if ! command_exists make; then
         print_message $CYAN "Installing make tool..."
-        sudo apt install -y make build-essential
+        apt_quiet install make build-essential
         print_message $GREEN "✓ make installation completed: $(make --version | head -1)"
     else
         print_message $GREEN "✓ make already exists: $(make --version | head -1)"
@@ -177,6 +226,15 @@ show_completion_info() {
     print_message $YELLOW "  make setup-dev           # Complete development environment"
     print_message $YELLOW "  make setup-web           # Web server environment"
     print_message $YELLOW "  make setup-basic         # Basic server environment"
+
+    if [ ${#BACKUP_PATHS[@]} -gt 0 ]; then
+        echo
+        print_message $BLUE "Pre-upgrade config backups (timestamp ${BACKUP_TIMESTAMP}):"
+        for path in "${BACKUP_PATHS[@]}"; do
+            print_message $YELLOW "  ${path}"
+        done
+        print_message $CYAN "  Restore example: sudo cp -a ${BACKUP_PATHS[0]} ${BACKUP_PATHS[0]%.bak.*}"
+    fi
 }
 
 # Main function
